@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - main
-      - master
     tags:
       - "v*"
   pull_request:
     branches:
       - main
-      - master
   workflow_dispatch:
 
 jobs:
@@ -47,39 +45,7 @@ jobs:
             echo "Error: Release signing secrets are not configured!"
             exit 1
           fi
-          python3 - << 'EOF'
-          import os, base64, sys, re
-
-          raw = os.environ.get("SIGNING_KEY_BASE64", "")
-          clean = re.sub(r'[^A-Za-z0-9+/=]', '', raw)
-
-          if len(clean) < 500:
-              print(f"Error: SIGNING_KEY is only {len(clean)} characters long.", file=sys.stderr)
-              print("Please make sure you pasted the full Base64 string (~3732 characters starting with MIIK...) into the SIGNING_KEY secret, not a file path or filename.", file=sys.stderr)
-              sys.exit(1)
-
-          # Auto-fix padding if trailing '=' characters were omitted during copy-paste
-          pad = len(clean) % 4
-          if pad:
-              clean += '=' * (4 - pad)
-
-          try:
-              decoded = base64.b64decode(clean)
-              with open("app/release.keystore", "wb") as f:
-                  f.write(decoded)
-              print(f"Keystore decoded successfully ({len(decoded)} bytes).")
-          except Exception as e:
-              print(f"Error decoding base64: {e}", file=sys.stderr)
-              sys.exit(1)
-          EOF
-
-          if ! keytool -list -keystore app/release.keystore -storepass "$KEY_STORE_PASSWORD" -alias "$ALIAS" > /dev/null 2>&1; then
-            echo "Error: Keystore integrity check failed! The SIGNING_KEY secret in GitHub is corrupted or truncated (expected 2798 bytes)."
-            echo "Please re-copy the entire base64 string and update SIGNING_KEY in repository secrets."
-            exit 1
-          fi
-          echo "Keystore integrity verified successfully."
-
+          echo "$SIGNING_KEY_BASE64" | base64 -d > app/release.keystore
           echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/app/release.keystore" >> $GITHUB_ENV
           echo "KEYSTORE_PASSWORD=$KEY_STORE_PASSWORD" >> $GITHUB_ENV
           echo "KEY_ALIAS=$ALIAS" >> $GITHUB_ENV
@@ -109,4 +75,5 @@ jobs:
           gh release create "$TAG_NAME" \
             "UpdateEngine-$TAG_NAME.apk" \
             --title "Update Engine $TAG_NAME" \
-            --generate-notes
+            --generate-notes \
+            --draft
