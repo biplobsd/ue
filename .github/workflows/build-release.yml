@@ -58,6 +58,11 @@ jobs:
               print("Please make sure you pasted the full Base64 string (~3732 characters starting with MIIK...) into the SIGNING_KEY secret, not a file path or filename.", file=sys.stderr)
               sys.exit(1)
 
+          # Auto-fix padding if trailing '=' characters were omitted during copy-paste
+          pad = len(clean) % 4
+          if pad:
+              clean += '=' * (4 - pad)
+
           try:
               decoded = base64.b64decode(clean)
               with open("app/release.keystore", "wb") as f:
