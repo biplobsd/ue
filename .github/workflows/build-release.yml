@@ -47,7 +47,11 @@ jobs:
             echo "Error: Release signing secrets are not configured!"
             exit 1
           fi
-          echo "$SIGNING_KEY_BASE64" | base64 -d > app/release.keystore
+          echo "$SIGNING_KEY_BASE64" | tr -d '\r\n "' | base64 -di > app/release.keystore
+          if [ ! -s app/release.keystore ]; then
+            echo "Error: Keystore decode failed or produced an empty file. Please verify the SIGNING_KEY secret in repository settings!"
+            exit 1
+          fi
           echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/app/release.keystore" >> $GITHUB_ENV
           echo "KEYSTORE_PASSWORD=$KEY_STORE_PASSWORD" >> $GITHUB_ENV
           echo "KEY_ALIAS=$ALIAS" >> $GITHUB_ENV
