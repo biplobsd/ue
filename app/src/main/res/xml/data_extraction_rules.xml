@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    See backup_rules.xml: the live pipeline state (files/datastore/) and the pipeline log must never be
+    carried over to another device or a freshly wiped one, otherwise a stale phase plus a stale stock
+    backup path makes the engine skip the root patch of the inactive slot.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="datastore" />
+        <exclude domain="file" path="pipeline.log" />
+        <exclude domain="file" path="ota" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="datastore" />
+        <exclude domain="file" path="pipeline.log" />
+        <exclude domain="file" path="ota" />
+    </device-transfer>
+</data-extraction-rules>

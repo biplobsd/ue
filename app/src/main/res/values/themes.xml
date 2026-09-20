@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Compose draws the whole window edge to edge; this platform theme only has to agree with the
+      system on light vs dark so the window background matches before the first frame. The night
+      variant keeps the same style name.
+    -->
+    <style name="Theme.HyperOsOtaEngine" parent="android:Theme.DeviceDefault.Light.NoActionBar" />
+</resources>

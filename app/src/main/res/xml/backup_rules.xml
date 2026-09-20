@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Nothing in this app may be restored onto another device or a freshly wiped one.
+
+    PipelineStorage keeps the live pipeline state in DataStore under files/datastore/ (current phase,
+    pending reboot slot, stock backup path, the module ids that were disabled) and SettingsStorage keeps
+    the /data space margin that gates flashing. A restored copy of that state would make the engine
+    believe a run is still in progress and that the inactive slot was already root-patched, so it would
+    skip `ksud boot-patch` and offer a reboot into an unpatched slot. Cloud backup itself is disabled in
+    the manifest; these exclusions keep the same guarantee if it is ever turned back on.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="datastore" />
+    <exclude domain="file" path="pipeline.log" />
+    <exclude domain="file" path="ota" />
+</full-backup-content>

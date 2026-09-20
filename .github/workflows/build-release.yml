@@ -1,0 +1,80 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ startsWith(github.ref, 'refs/tags/v') && 'Build Release APK + Publish' || 'Build Release APK' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Prepare Signing Credentials
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_KEY_BASE64" ] || [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Error: Release signing secrets are not configured!"
+            exit 1
+          fi
+          echo "$SIGNING_KEY_BASE64" | base64 -d > app/release.keystore
+          echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/app/release.keystore" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=$KEY_STORE_PASSWORD" >> $GITHUB_ENV
+          echo "KEY_ALIAS=$ALIAS" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+
+      - name: Build Release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      # ── Artifact only (branch push / PR) ───────────────────────────
+      - name: Upload Release Artifact
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: UpdateEngine-release-${{ github.sha }}
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+
+      # ── Publish to GitHub Release (tag push only) ──────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=$GITHUB_REF_NAME
+          cp app/build/outputs/apk/release/app-release.apk \
+             UpdateEngine-$TAG_NAME.apk
+          gh release create "$TAG_NAME" \
+            "UpdateEngine-$TAG_NAME.apk" \
+            --title "Update Engine $TAG_NAME" \
+            --generate-notes
