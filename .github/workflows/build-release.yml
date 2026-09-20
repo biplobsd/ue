@@ -73,6 +73,13 @@ jobs:
               sys.exit(1)
           EOF
 
+          if ! keytool -list -keystore app/release.keystore -storepass "$KEY_STORE_PASSWORD" -alias "$ALIAS" > /dev/null 2>&1; then
+            echo "Error: Keystore integrity check failed! The SIGNING_KEY secret in GitHub is corrupted or truncated (expected 2798 bytes)."
+            echo "Please re-copy the entire base64 string and update SIGNING_KEY in repository secrets."
+            exit 1
+          fi
+          echo "Keystore integrity verified successfully."
+
           echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/app/release.keystore" >> $GITHUB_ENV
           echo "KEYSTORE_PASSWORD=$KEY_STORE_PASSWORD" >> $GITHUB_ENV
           echo "KEY_ALIAS=$ALIAS" >> $GITHUB_ENV
