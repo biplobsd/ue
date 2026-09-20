@@ -47,11 +47,27 @@ jobs:
             echo "Error: Release signing secrets are not configured!"
             exit 1
           fi
-          echo "$SIGNING_KEY_BASE64" | tr -d '\r\n "' | base64 -di > app/release.keystore
-          if [ ! -s app/release.keystore ]; then
-            echo "Error: Keystore decode failed or produced an empty file. Please verify the SIGNING_KEY secret in repository settings!"
-            exit 1
-          fi
+          python3 - << 'EOF'
+          import os, base64, sys, re
+
+          raw = os.environ.get("SIGNING_KEY_BASE64", "")
+          clean = re.sub(r'[^A-Za-z0-9+/=]', '', raw)
+
+          if len(clean) < 500:
+              print(f"Error: SIGNING_KEY is only {len(clean)} characters long.", file=sys.stderr)
+              print("Please make sure you pasted the full Base64 string (~3732 characters starting with MIIK...) into the SIGNING_KEY secret, not a file path or filename.", file=sys.stderr)
+              sys.exit(1)
+
+          try:
+              decoded = base64.b64decode(clean)
+              with open("app/release.keystore", "wb") as f:
+                  f.write(decoded)
+              print(f"Keystore decoded successfully ({len(decoded)} bytes).")
+          except Exception as e:
+              print(f"Error decoding base64: {e}", file=sys.stderr)
+              sys.exit(1)
+          EOF
+
           echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/app/release.keystore" >> $GITHUB_ENV
           echo "KEYSTORE_PASSWORD=$KEY_STORE_PASSWORD" >> $GITHUB_ENV
           echo "KEY_ALIAS=$ALIAS" >> $GITHUB_ENV
